@@ -43,8 +43,6 @@ var (
 		},
 		labels,
 	)
-
-	GPU_FORMAT  = "gpu%d"
 )
 
 
