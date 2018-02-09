@@ -1,1 +1,1 @@
-Install with "go get github.com/dschiemann/prometheus_exporters/..."
+Install with "go get github.com/dschiemann80/prometheus_exporters/..."
