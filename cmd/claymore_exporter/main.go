@@ -3,12 +3,11 @@ package main
 import (
 	"fmt"
 	"time"
-	"strings"
-	"strconv"
 
 	"github.com/prometheus/client_golang/prometheus"
 	
-	"github.com/dschiemann/prometheus_exporters/claymore_exporter"
+	"github.com/dschiemann80/prometheus_exporters/common"
+	"github.com/dschiemann80/prometheus_exporters/claymore_ds"
 )
 
 var (
@@ -16,7 +15,7 @@ var (
 
 	ethHashrate = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
-			Name:       "gpu_eth_hashrate_mhs",
+			Name:       "claymore_eth_hashrate_mhs",
 			Help:       "ETH hashrate in MH/s",
 		},
 		labels,
@@ -24,7 +23,7 @@ var (
 
 	scHashrate = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
-			Name:       "gpu_sc_hashrate_mhs",
+			Name:       "claymore_sc_hashrate_mhs",
 			Help:       "SC hashrate in MH/s",
 		},
 		labels,
@@ -32,7 +31,7 @@ var (
 
 	totalEthShares = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
-			Name:       "gpu_eth_shares_total",
+			Name:       "claymore_eth_shares_total",
 			Help:       "Total ETH shares",
 		},
 		labels,
@@ -40,7 +39,7 @@ var (
 
 	totalScShares = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
-			Name:       "gpu_sc_shares_total",
+			Name:       "claymore_sc_shares_total",
 			Help:       "Total SC shares",
 		},
 		labels,
@@ -49,57 +48,97 @@ var (
 	GPU_FORMAT           = "gpu%d"
 )
 
+type ClaymoreExporter struct {
+	*common.Exporter
+
+	claymoreDs *claymore_ds.ClaymoreDatasource
+	gpus []string
+	oldTotalEthShares []uint
+	oldTotalScShares []uint
+}
+
+func NewClaymoreExporter() *ClaymoreExporter {
+	//init collectors
+	newClaymoreExporter := ClaymoreExporter{}
+	newClaymoreExporter.Exporter.Init([]prometheus.Collector{ethHashrate, scHashrate, totalEthShares, totalScShares})
+
+	//init datasource
+	newClaymoreExporter.claymoreDs = claymore_ds.NewClaymoreDatasource()
+
+	//init labels and old values
+	for i := 0; i < newClaymoreExporter.claymoreDs.DeviceCount(); i++ {
+		newClaymoreExporter.gpus = append(newClaymoreExporter.gpus, fmt.Sprintf(GPU_FORMAT, i))
+		newClaymoreExporter.oldTotalEthShares = append(newClaymoreExporter.oldTotalEthShares, 0)
+		newClaymoreExporter.oldTotalScShares = append(newClaymoreExporter.oldTotalScShares, 0)
+	}
+	
+	return &newClaymoreExporter
+}
+
+func (claymoreExp *ClaymoreExporter) DeviceCount() int {
+	return claymoreExp.claymoreDs.DeviceCount()
+}
+
+func (claymoreExp *ClaymoreExporter) setEthHashrate(index int) {
+	ethHashrate.WithLabelValues(claymoreExp.gpus[index]).Set(claymoreExp.claymoreDs.EthHashrate(index))
+}
+
+func (claymoreExp *ClaymoreExporter) setScHashrate(index int) {
+	scHashrate.WithLabelValues(claymoreExp.gpus[index]).Set(claymoreExp.claymoreDs.ScHashrate(index))
+}
+
+func (claymoreExp *ClaymoreExporter) setEthTotalShares(index int) {
+	value := claymoreExp.claymoreDs.EthTotalShares(index)
+	if value != claymoreExp.oldTotalEthShares[index] {
+		totalEthShares.WithLabelValues(claymoreExp.gpus[index]).Add(float64(value - claymoreExp.oldTotalEthShares[index]))
+		claymoreExp.oldTotalEthShares[index] = value
+	}
+}
+
+func (claymoreExp *ClaymoreExporter) setScTotalShares(index int) {
+	value := claymoreExp.claymoreDs.ScTotalShares(index)
+	if value != claymoreExp.oldTotalScShares[index] {
+		totalScShares.WithLabelValues(claymoreExp.gpus[index]).Add(float64(value - claymoreExp.oldTotalScShares[index]))
+		claymoreExp.oldTotalScShares[index] = value
+	}
+}
+
 func main() {
 
-	cExporter := claymore_exporter.NewClaymoreExporter([]prometheus.Collector{ethHashrate, scHashrate, totalEthShares, totalScShares})
+	claymoreExporter := NewClaymoreExporter()
 
-	numDevices := cExporter.Find_latest_claymore_pattern_count("(GPU\\d)+")
-	fmt.Printf("Number of GPUS: %v\n", numDevices)
+	numDevices := claymoreExporter.DeviceCount()
 
 	for i := 0; i < int(numDevices); i++ {
 		go func(index int) {
-			gpu := fmt.Sprintf(GPU_FORMAT, index)
 			for {
-				value, _ := strconv.ParseFloat(cExporter.Find_latest_claymore_hashrate("ETH", index), 64)
-				ethHashrate.WithLabelValues(gpu).Set(value)
-				time.Sleep(cExporter.PollInterval() * time.Second)
+				claymoreExporter.setEthHashrate(index)
+				time.Sleep(claymoreExporter.PollInterval() * time.Second)
 			}
 		}(i)
 
 		go func(index int) {
-			gpu := fmt.Sprintf(GPU_FORMAT, index)
 			for {
-				value, _ := strconv.ParseFloat(cExporter.Find_latest_claymore_hashrate("SC", index), 64)
-				scHashrate.WithLabelValues(gpu).Set(value)
-				time.Sleep(cExporter.PollInterval() * time.Second)
+				claymoreExporter.setScHashrate(index)
+				time.Sleep(claymoreExporter.PollInterval() * time.Second)
 			}
 		}(i)
 
 		go func(index int) {
-			gpu := fmt.Sprintf(GPU_FORMAT, index)
-			oldValue := 0.0
 			for {
-				value, _ := strconv.ParseFloat(strings.Split(cExporter.Find_latest_claymore_total_shares("ETH"), "+")[index], 64)
-				if value != oldValue {
-					totalEthShares.WithLabelValues(gpu).Add(value - oldValue)
-				}
-				time.Sleep(cExporter.PollInterval() * time.Second)
+				claymoreExporter.setEthTotalShares(index)
+				time.Sleep(claymoreExporter.PollInterval() * time.Second)
 			}
 		}(i)
 
 		go func(index int) {
-			gpu := fmt.Sprintf(GPU_FORMAT, index)
-			oldValue := 0.0
 			for {
-				value, _ := strconv.ParseFloat(strings.Split(cExporter.Find_latest_claymore_total_shares("SC"), "+")[index], 64)
-				if value != oldValue {
-					totalScShares.WithLabelValues(gpu).Add(value - oldValue)
-				}
-				time.Sleep(cExporter.PollInterval() * time.Second)
+				claymoreExporter.setScTotalShares(index)
+				time.Sleep(claymoreExporter.PollInterval() * time.Second)
 			}
 		}(i)
 	}
 
 	// Expose the registered metrics via HTTP.
-	cExporter.StartPromHttpAndLog()
+	claymoreExporter.StartPromHttpAndLog()
 }

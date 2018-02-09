@@ -6,7 +6,8 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 
-	"github.com/dschiemann/prometheus_exporters/nvidia_gpu_exporter"
+	"github.com/dschiemann80/prometheus_exporters/common"
+	"github.com/dschiemann80/prometheus_exporters/nvidia_gpu_ds"
 )
 
 var (
@@ -47,73 +48,93 @@ var (
 	GPU_FORMAT  = "gpu%d"
 )
 
+
+type NvidiaGpuExporter struct {
+	*common.Exporter
+
+	datasource *nvidia_gpu_ds.NvidiaGpuDatasource
+	gpus []string
+}
+
+func NewNvidiaGpuExporter() *NvidiaGpuExporter {
+	newNvidiaGpuExporter := NvidiaGpuExporter{}
+	newNvidiaGpuExporter.Exporter.Init([]prometheus.Collector{powerdraw, temperature, fanSpeed, utilization})
+	
+	newNvidiaGpuExporter.datasource = nvidia_gpu_ds.NewNvidiaGpuDatasource()
+	
+	//init labels
+	for i := 0; i < newNvidiaGpuExporter.datasource.DeviceCount(); i++ {
+		newNvidiaGpuExporter.gpus = append(newNvidiaGpuExporter.gpus, fmt.Sprintf(GPU_FORMAT, i))
+	}
+	
+	return &newNvidiaGpuExporter
+}
+
+func (nvGpuExp *NvidiaGpuExporter) DeviceCount() int {
+	return nvGpuExp.datasource.DeviceCount()
+}
+
+func (nvGpuExp *NvidiaGpuExporter) SetPowerdraw(index int) {
+	powerdraw.WithLabelValues(nvGpuExp.gpus[index]).Set(float64(nvGpuExp.datasource.Powerdraw(index) / 1000))
+}
+
+func (nvGpuExp *NvidiaGpuExporter) SetTemperature(index int) {
+	temperature.WithLabelValues(nvGpuExp.gpus[index]).Set(float64(nvGpuExp.datasource.Temperature(index)))
+}
+
+func (nvGpuExp *NvidiaGpuExporter) SetFanSpeed(index int) {
+	fanSpeed.WithLabelValues(nvGpuExp.gpus[index]).Set(float64(nvGpuExp.datasource.FanSpeed(index)))
+}
+
+func (nvGpuExp *NvidiaGpuExporter) SetUtilization(index int) {
+	utilization.WithLabelValues(nvGpuExp.gpus[index]).Set(float64(nvGpuExp.datasource.Utilization(index)))
+}
+
+func (nvGpuExp *NvidiaGpuExporter) Shutdown() {
+	nvGpuExp.datasource.Shutdown()
+}
+
 func main() {
 
-	nExporter := nvidia_gpu_exporter.NewNvidiaGpuExporter([]prometheus.Collector{powerdraw, temperature, fanSpeed, utilization})
-	if nExporter == nil {
+	nvidiaGpuExporter := NewNvidiaGpuExporter()
+	if nvidiaGpuExporter == nil {
 		return
 	}
-	defer nExporter.Shutdown()
+	defer nvidiaGpuExporter.Shutdown()
+	
+	numDevices := nvidiaGpuExporter.DeviceCount()
 
-	for i := 0; i < len(nExporter.Devs); i++ {
+	for i := 0; i < numDevices; i++ {
 
 		go func(index int) {
-			gpu := fmt.Sprintf(GPU_FORMAT, index)
 			for {
-				value, err := nExporter.Devs[index].PowerUsage()
-				if err != nil {
-					fmt.Printf("\tdev[%d].PowerUsage() error: %v\n", index, err)
-					value = 0
-				}
-
-				powerdraw.WithLabelValues(gpu).Set(float64(value) / 1000)
-				time.Sleep(nExporter.PollInterval() * time.Second)
+				nvidiaGpuExporter.SetPowerdraw(index)
+				time.Sleep(nvidiaGpuExporter.PollInterval() * time.Second)
 			}
 		}(i)
 
 		go func(index int) {
-			gpu := fmt.Sprintf(GPU_FORMAT, index)
 			for {
-				value, err := nExporter.Devs[index].Temperature()
-				if err != nil {
-					fmt.Printf("\tdev[%d].Temperature() error: %v\n", index, err)
-					value = 0
-				}
-
-				temperature.WithLabelValues(gpu).Set(float64(value))
-				time.Sleep(nExporter.PollInterval() * time.Second)
+				nvidiaGpuExporter.SetTemperature(index)
+				time.Sleep(nvidiaGpuExporter.PollInterval() * time.Second)
 			}
 		}(i)
 
 		go func(index int) {
-			gpu := fmt.Sprintf(GPU_FORMAT, index)
 			for {
-				value, err := nExporter.Devs[index].FanSpeed()
-				if err != nil {
-					fmt.Printf("\tdev[%d].FanSpeed() error: %v\n", index, err)
-					value = 0
-				}
-
-				fanSpeed.WithLabelValues(gpu).Set(float64(value))
-				time.Sleep(nExporter.PollInterval() * time.Millisecond)
+				nvidiaGpuExporter.SetFanSpeed(index)
+				time.Sleep(nvidiaGpuExporter.PollInterval() * time.Millisecond)
 			}
 		}(i)
 
 		go func(index int) {
-			gpu := fmt.Sprintf(GPU_FORMAT, index)
 			for {
-				value, _, err := nExporter.Devs[index].UtilizationRates()
-				if err != nil {
-					fmt.Printf("\tdev[%d].UtilizationRates() error: %v\n", index, err)
-					value = 0
-				}
-
-				utilization.WithLabelValues(gpu).Set(float64(value))
-				time.Sleep(nExporter.PollInterval() * time.Millisecond)
+				nvidiaGpuExporter.SetUtilization(index)
+				time.Sleep(nvidiaGpuExporter.PollInterval() * time.Millisecond)
 			}
 		}(i)
 	}
 
 	// Expose the registered metrics via HTTP.
-	nExporter.StartPromHttpAndLog()
+	nvidiaGpuExporter.StartPromHttpAndLog()
 }
