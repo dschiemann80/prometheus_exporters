@@ -6,7 +6,7 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 	
-	"github.com/dschiemann80/prometheus_exporters/common"
+	"github.com/dschiemann80/prometheus_exporters/exporter"
 	"github.com/dschiemann80/prometheus_exporters/claymore_ds"
 )
 
@@ -49,7 +49,7 @@ var (
 )
 
 type ClaymoreExporter struct {
-	*common.Exporter
+	*exporter.Exporter
 
 	claymoreDs *claymore_ds.ClaymoreDatasource
 	gpus []string

@@ -6,7 +6,7 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 
-	"github.com/dschiemann80/prometheus_exporters/common"
+	"github.com/dschiemann80/prometheus_exporters/exporter"
 	"github.com/dschiemann80/prometheus_exporters/nvidia_gpu_ds"
 )
 
@@ -50,7 +50,7 @@ var (
 
 
 type NvidiaGpuExporter struct {
-	*common.Exporter
+	*exporter.Exporter
 
 	datasource *nvidia_gpu_ds.NvidiaGpuDatasource
 	gpus []string
