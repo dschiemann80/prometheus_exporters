@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -44,62 +43,56 @@ var (
 		},
 		labels,
 	)
-
-	GPU_FORMAT           = "gpu%d"
 )
 
 type ClaymoreExporter struct {
 	*exporter.Exporter
 
 	claymoreDs *claymore_ds.ClaymoreDatasource
-	gpus []string
-	oldTotalEthShares []uint
-	oldTotalScShares []uint
+	lastTotalEthShares []uint
+	lastTotalScShares []uint
 }
 
 func NewClaymoreExporter() *ClaymoreExporter {
-	//init collectors
 	newClaymoreExporter := ClaymoreExporter{}
-	newClaymoreExporter.Exporter.Init([]prometheus.Collector{ethHashrate, scHashrate, totalEthShares, totalScShares})
 
 	//init datasource
 	newClaymoreExporter.claymoreDs = claymore_ds.NewClaymoreDatasource()
+	numDevices := newClaymoreExporter.claymoreDs.DeviceCount()
+	
+	//init "super class"
+	newClaymoreExporter.Exporter.Init([]prometheus.Collector{ethHashrate, scHashrate, totalEthShares, totalScShares}, numDevices)
 
-	//init labels and old values
-	for i := 0; i < newClaymoreExporter.claymoreDs.DeviceCount(); i++ {
-		newClaymoreExporter.gpus = append(newClaymoreExporter.gpus, fmt.Sprintf(GPU_FORMAT, i))
-		newClaymoreExporter.oldTotalEthShares = append(newClaymoreExporter.oldTotalEthShares, 0)
-		newClaymoreExporter.oldTotalScShares = append(newClaymoreExporter.oldTotalScShares, 0)
+	//init last values
+	for i := 0; i < numDevices; i++ {
+		newClaymoreExporter.lastTotalEthShares = append(newClaymoreExporter.lastTotalEthShares, 0)
+		newClaymoreExporter.lastTotalScShares = append(newClaymoreExporter.lastTotalScShares, 0)
 	}
 	
 	return &newClaymoreExporter
 }
 
-func (claymoreExp *ClaymoreExporter) DeviceCount() int {
-	return claymoreExp.claymoreDs.DeviceCount()
-}
-
 func (claymoreExp *ClaymoreExporter) setEthHashrate(index int) {
-	ethHashrate.WithLabelValues(claymoreExp.gpus[index]).Set(claymoreExp.claymoreDs.EthHashrate(index))
+	ethHashrate.WithLabelValues(claymoreExp.GpuLabel(index)).Set(claymoreExp.claymoreDs.EthHashrate(index))
 }
 
 func (claymoreExp *ClaymoreExporter) setScHashrate(index int) {
-	scHashrate.WithLabelValues(claymoreExp.gpus[index]).Set(claymoreExp.claymoreDs.ScHashrate(index))
+	scHashrate.WithLabelValues(claymoreExp.Exporter.GpuLabel(index)).Set(claymoreExp.claymoreDs.ScHashrate(index))
 }
 
 func (claymoreExp *ClaymoreExporter) setEthTotalShares(index int) {
 	value := claymoreExp.claymoreDs.EthTotalShares(index)
-	if value != claymoreExp.oldTotalEthShares[index] {
-		totalEthShares.WithLabelValues(claymoreExp.gpus[index]).Add(float64(value - claymoreExp.oldTotalEthShares[index]))
-		claymoreExp.oldTotalEthShares[index] = value
+	if value != claymoreExp.lastTotalEthShares[index] {
+		totalEthShares.WithLabelValues(claymoreExp.Exporter.GpuLabel(index)).Add(float64(value - claymoreExp.lastTotalEthShares[index]))
+		claymoreExp.lastTotalEthShares[index] = value
 	}
 }
 
 func (claymoreExp *ClaymoreExporter) setScTotalShares(index int) {
 	value := claymoreExp.claymoreDs.ScTotalShares(index)
-	if value != claymoreExp.oldTotalScShares[index] {
-		totalScShares.WithLabelValues(claymoreExp.gpus[index]).Add(float64(value - claymoreExp.oldTotalScShares[index]))
-		claymoreExp.oldTotalScShares[index] = value
+	if value != claymoreExp.lastTotalScShares[index] {
+		totalScShares.WithLabelValues(claymoreExp.Exporter.GpuLabel(index)).Add(float64(value - claymoreExp.lastTotalScShares[index]))
+		claymoreExp.lastTotalScShares[index] = value
 	}
 }
 
@@ -107,7 +100,7 @@ func main() {
 
 	claymoreExporter := NewClaymoreExporter()
 
-	numDevices := claymoreExporter.DeviceCount()
+	numDevices := claymoreExporter.NumDevices()
 
 	for i := 0; i < int(numDevices); i++ {
 		go func(index int) {

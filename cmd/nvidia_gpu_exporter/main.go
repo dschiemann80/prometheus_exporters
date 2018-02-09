@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -53,19 +52,17 @@ type NvidiaGpuExporter struct {
 	*exporter.Exporter
 
 	datasource *nvidia_gpu_ds.NvidiaGpuDatasource
-	gpus []string
 }
 
 func NewNvidiaGpuExporter() *NvidiaGpuExporter {
 	newNvidiaGpuExporter := NvidiaGpuExporter{}
-	newNvidiaGpuExporter.Exporter.Init([]prometheus.Collector{powerdraw, temperature, fanSpeed, utilization})
-	
+
+	//init datasource
 	newNvidiaGpuExporter.datasource = nvidia_gpu_ds.NewNvidiaGpuDatasource()
-	
-	//init labels
-	for i := 0; i < newNvidiaGpuExporter.datasource.DeviceCount(); i++ {
-		newNvidiaGpuExporter.gpus = append(newNvidiaGpuExporter.gpus, fmt.Sprintf(GPU_FORMAT, i))
-	}
+	numDevices := newNvidiaGpuExporter.datasource.DeviceCount()
+
+	//init "super class"
+	newNvidiaGpuExporter.Exporter.Init([]prometheus.Collector{powerdraw, temperature, fanSpeed, utilization}, numDevices)
 	
 	return &newNvidiaGpuExporter
 }
@@ -75,19 +72,19 @@ func (nvGpuExp *NvidiaGpuExporter) DeviceCount() int {
 }
 
 func (nvGpuExp *NvidiaGpuExporter) SetPowerdraw(index int) {
-	powerdraw.WithLabelValues(nvGpuExp.gpus[index]).Set(float64(nvGpuExp.datasource.Powerdraw(index) / 1000))
+	powerdraw.WithLabelValues(nvGpuExp.GpuLabel(index)).Set(float64(nvGpuExp.datasource.Powerdraw(index) / 1000))
 }
 
 func (nvGpuExp *NvidiaGpuExporter) SetTemperature(index int) {
-	temperature.WithLabelValues(nvGpuExp.gpus[index]).Set(float64(nvGpuExp.datasource.Temperature(index)))
+	temperature.WithLabelValues(nvGpuExp.GpuLabel(index)).Set(float64(nvGpuExp.datasource.Temperature(index)))
 }
 
 func (nvGpuExp *NvidiaGpuExporter) SetFanSpeed(index int) {
-	fanSpeed.WithLabelValues(nvGpuExp.gpus[index]).Set(float64(nvGpuExp.datasource.FanSpeed(index)))
+	fanSpeed.WithLabelValues(nvGpuExp.GpuLabel(index)).Set(float64(nvGpuExp.datasource.FanSpeed(index)))
 }
 
 func (nvGpuExp *NvidiaGpuExporter) SetUtilization(index int) {
-	utilization.WithLabelValues(nvGpuExp.gpus[index]).Set(float64(nvGpuExp.datasource.Utilization(index)))
+	utilization.WithLabelValues(nvGpuExp.GpuLabel(index)).Set(float64(nvGpuExp.datasource.Utilization(index)))
 }
 
 func (nvGpuExp *NvidiaGpuExporter) Shutdown() {
