@@ -46,7 +46,7 @@ var (
 )
 
 type ClaymoreExporter struct {
-	*exporter.Exporter
+	exporter.Exporter
 
 	claymoreDs *claymore_ds.ClaymoreDatasource
 	lastTotalEthShares []uint

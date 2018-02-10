@@ -47,7 +47,7 @@ var (
 
 
 type NvidiaGpuExporter struct {
-	*exporter.Exporter
+	exporter.Exporter
 
 	datasource *nvidia_gpu_ds.NvidiaGpuDatasource
 }

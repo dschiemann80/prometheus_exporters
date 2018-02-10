@@ -29,6 +29,7 @@ func (exporter *Exporter) Init(collectors []prometheus.Collector, numDevices int
 	}
 
 	//init gpu labels
+	exporter.gpus = []string{}
 	for i := 0; i < numDevices; i++ {
 		exporter.gpus = append(exporter.gpus, fmt.Sprintf(GPU_FORMAT, i))
 	}
