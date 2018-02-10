@@ -49,7 +49,7 @@ var (
 type NvidiaGpuExporter struct {
 	exporter.Exporter
 
-	datasource *nvidia_gpu_ds.NvidiaGpuDatasource
+	datasource nvidia_gpu_ds.NvidiaGpuDatasource
 }
 
 func NewNvidiaGpuExporter() *NvidiaGpuExporter {
