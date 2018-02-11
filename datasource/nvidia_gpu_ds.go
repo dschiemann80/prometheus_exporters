@@ -1,4 +1,4 @@
-package nvidia_gpu_ds
+package datasource
 
 type NvidiaGpuDatasource interface {
 	Init()

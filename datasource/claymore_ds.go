@@ -1,4 +1,4 @@
-package claymore_ds
+package datasource
 
 import (
 	"net/http"

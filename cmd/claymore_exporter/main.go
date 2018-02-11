@@ -6,7 +6,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	
 	"github.com/dschiemann80/prometheus_exporters/exporter"
-	"github.com/dschiemann80/prometheus_exporters/claymore_ds"
+	"github.com/dschiemann80/prometheus_exporters/datasource"
 )
 
 var (
@@ -48,17 +48,17 @@ var (
 type ClaymoreExporter struct {
 	exporter.Exporter
 
-	claymoreDs *claymore_ds.ClaymoreDatasource
+	ds                 *datasource.ClaymoreDatasource
 	lastTotalEthShares []uint
-	lastTotalScShares []uint
+	lastTotalScShares  []uint
 }
 
 func NewClaymoreExporter() *ClaymoreExporter {
 	newClaymoreExporter := ClaymoreExporter{}
 
 	//init datasource
-	newClaymoreExporter.claymoreDs = claymore_ds.NewClaymoreDatasource()
-	numDevices := newClaymoreExporter.claymoreDs.DeviceCount()
+	newClaymoreExporter.ds = datasource.NewClaymoreDatasource()
+	numDevices := newClaymoreExporter.ds.DeviceCount()
 	
 	//init "super class"
 	newClaymoreExporter.Exporter.Init([]prometheus.Collector{ethHashrate, scHashrate, totalEthShares, totalScShares}, numDevices)
@@ -73,15 +73,15 @@ func NewClaymoreExporter() *ClaymoreExporter {
 }
 
 func (claymoreExp *ClaymoreExporter) setEthHashrate(index int) {
-	ethHashrate.WithLabelValues(claymoreExp.GpuLabel(index)).Set(claymoreExp.claymoreDs.EthHashrate(index))
+	ethHashrate.WithLabelValues(claymoreExp.GpuLabel(index)).Set(claymoreExp.ds.EthHashrate(index))
 }
 
 func (claymoreExp *ClaymoreExporter) setScHashrate(index int) {
-	scHashrate.WithLabelValues(claymoreExp.Exporter.GpuLabel(index)).Set(claymoreExp.claymoreDs.ScHashrate(index))
+	scHashrate.WithLabelValues(claymoreExp.Exporter.GpuLabel(index)).Set(claymoreExp.ds.ScHashrate(index))
 }
 
 func (claymoreExp *ClaymoreExporter) setEthTotalShares(index int) {
-	value := claymoreExp.claymoreDs.EthTotalShares(index)
+	value := claymoreExp.ds.EthTotalShares(index)
 	if value != claymoreExp.lastTotalEthShares[index] {
 		totalEthShares.WithLabelValues(claymoreExp.Exporter.GpuLabel(index)).Add(float64(value - claymoreExp.lastTotalEthShares[index]))
 		claymoreExp.lastTotalEthShares[index] = value
@@ -89,7 +89,7 @@ func (claymoreExp *ClaymoreExporter) setEthTotalShares(index int) {
 }
 
 func (claymoreExp *ClaymoreExporter) setScTotalShares(index int) {
-	value := claymoreExp.claymoreDs.ScTotalShares(index)
+	value := claymoreExp.ds.ScTotalShares(index)
 	if value != claymoreExp.lastTotalScShares[index] {
 		totalScShares.WithLabelValues(claymoreExp.Exporter.GpuLabel(index)).Add(float64(value - claymoreExp.lastTotalScShares[index]))
 		claymoreExp.lastTotalScShares[index] = value
