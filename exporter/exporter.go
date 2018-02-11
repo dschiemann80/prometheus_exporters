@@ -14,8 +14,9 @@ import (
 var (
 	addr         = flag.String(  "listen-address",       ":9101", "The address to listen on for HTTP requests.")
 	pollInterval = flag.Duration("poll-interval-seconds", 15,     "The number of seconds to wait after each poll")
-	
-	GPU_FORMAT           = "gpu%d"
+
+	LABELS     = []string{"gpu"}
+	GPU_FORMAT = "gpu%d"
 )
 
 type Exporter struct {
@@ -28,7 +29,7 @@ func (exporter *Exporter) Init(collectors []prometheus.Collector, numDevices int
 		prometheus.MustRegister(c)
 	}
 
-	//init gpu labels
+	//init gpu LABELS
 	exporter.gpus = []string{}
 	for i := 0; i < numDevices; i++ {
 		exporter.gpus = append(exporter.gpus, fmt.Sprintf(GPU_FORMAT, i))
