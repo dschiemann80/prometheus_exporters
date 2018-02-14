@@ -1,7 +1,6 @@
 package datasource
 
 type NvidiaGpuDatasource interface {
-	Init()
 	Shutdown()
 	DeviceCount() int
 	Powerdraw(index int) uint

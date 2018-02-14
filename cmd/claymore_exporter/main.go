@@ -10,37 +10,16 @@ func main() {
 
 	claymoreExporter := exporter.NewClaymoreExporter()
 
-	numDevices := claymoreExporter.NumDevices()
-
-	for i := 0; i < int(numDevices); i++ {
-		go func(index int) {
-			for {
-				claymoreExporter.SetEthHashrate(index)
-				time.Sleep(claymoreExporter.PollInterval() * time.Second)
-			}
-		}(i)
-
-		go func(index int) {
-			for {
-				claymoreExporter.SetScHashrate(index)
-				time.Sleep(claymoreExporter.PollInterval() * time.Second)
-			}
-		}(i)
-
-		go func(index int) {
-			for {
-				claymoreExporter.SetEthTotalShares(index)
-				time.Sleep(claymoreExporter.PollInterval() * time.Second)
-			}
-		}(i)
-
-		go func(index int) {
-			for {
-				claymoreExporter.SetScTotalShares(index)
-				time.Sleep(claymoreExporter.PollInterval() * time.Second)
-			}
-		}(i)
-	}
+	go func() {
+		for {
+			claymoreExporter.Update()
+			claymoreExporter.SetEthHashrates()
+			claymoreExporter.SetScHashrates()
+			claymoreExporter.SetEthTotalShares()
+			claymoreExporter.SetScTotalShares()
+			time.Sleep(claymoreExporter.PollInterval() * time.Second)
+		}
+	}()
 
 	// Expose the registered metrics via HTTP.
 	claymoreExporter.StartPromHttpAndLog()

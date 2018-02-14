@@ -53,40 +53,71 @@ func NewClaymoreExporter() *ClaymoreExporter {
 
 	//init datasource
 	newClaymoreExporter.ds = datasource.NewClaymoreDatasource()
-	numDevices := newClaymoreExporter.ds.DeviceCount()
 
 	//init "super class"
-	newClaymoreExporter.Exporter.Init([]prometheus.Collector{ethHashrate, scHashrate, totalEthShares, totalScShares}, numDevices)
-
-	//init last values
-	for i := 0; i < numDevices; i++ {
-		newClaymoreExporter.lastTotalEthShares = append(newClaymoreExporter.lastTotalEthShares, 0)
-		newClaymoreExporter.lastTotalScShares = append(newClaymoreExporter.lastTotalScShares, 0)
-	}
+	newClaymoreExporter.init([]prometheus.Collector{ethHashrate, scHashrate, totalEthShares, totalScShares})
 
 	return &newClaymoreExporter
 }
 
-func (claymoreExp *ClaymoreExporter) SetEthHashrate(index int) {
-	ethHashrate.WithLabelValues(claymoreExp.GpuLabel(index)).Set(claymoreExp.ds.EthHashrate(index))
-}
+func (exp *ClaymoreExporter) Update() {
+	//save the current number of devices
+	oldNumDevices := exp.ds.DeviceCount()
 
-func (claymoreExp *ClaymoreExporter) SetScHashrate(index int) {
-	scHashrate.WithLabelValues(claymoreExp.Exporter.GpuLabel(index)).Set(claymoreExp.ds.ScHashrate(index))
-}
+	//update the datasource
+	exp.ds.Update()
 
-func (claymoreExp *ClaymoreExporter) SetEthTotalShares(index int) {
-	value := claymoreExp.ds.EthTotalShares(index)
-	if value != claymoreExp.lastTotalEthShares[index] {
-		totalEthShares.WithLabelValues(claymoreExp.Exporter.GpuLabel(index)).Add(float64(value - claymoreExp.lastTotalEthShares[index]))
-		claymoreExp.lastTotalEthShares[index] = value
+	//get the new number of devices
+	numDevices := exp.ds.DeviceCount()
+
+	if oldNumDevices != numDevices {
+		//number of devices changed, re-init internal state
+
+		//update the super class for gpu labels
+		exp.setNumDevices(numDevices)
+
+		//make new last total shares of correct size
+		newLastTotalEthShares := make([]uint, numDevices)
+		newLastTotalScShares := make([]uint, numDevices)
+
+		///copy over existing values
+		copy(exp.lastTotalEthShares, newLastTotalEthShares)
+		copy(exp.lastTotalScShares, newLastTotalScShares)
+
+		//set the new slices as current values
+		exp.lastTotalEthShares = newLastTotalEthShares
+		exp.lastTotalScShares = newLastTotalScShares
 	}
 }
 
-func (claymoreExp *ClaymoreExporter) SetScTotalShares(index int) {
-	value := claymoreExp.ds.ScTotalShares(index)
-	if value != claymoreExp.lastTotalScShares[index] {
-		totalScShares.WithLabelValues(claymoreExp.Exporter.GpuLabel(index)).Add(float64(value - claymoreExp.lastTotalScShares[index]))
-		claymoreExp.lastTotalScShares[index] = value
+func (exp *ClaymoreExporter) SetEthHashrates() {
+	for i := 0; i < exp.NumDevices(); i++ {
+		ethHashrate.WithLabelValues(exp.GpuLabel(i)).Set(exp.ds.EthHashrate(i))
+	}
+}
+
+func (exp *ClaymoreExporter) SetScHashrates() {
+	for i := 0; i < exp.NumDevices(); i++ {
+		scHashrate.WithLabelValues(exp.GpuLabel(i)).Set(exp.ds.ScHashrate(i))
+	}
+}
+
+func (exp *ClaymoreExporter) SetEthTotalShares() {
+	for i := 0; i < exp.NumDevices(); i++ {
+		value := exp.ds.EthTotalShares(i)
+		if value != exp.lastTotalEthShares[i] {
+			totalEthShares.WithLabelValues(exp.GpuLabel(i)).Add(float64(value - exp.lastTotalEthShares[i]))
+			exp.lastTotalEthShares[i] = value
+		}
+	}
+}
+
+func (exp *ClaymoreExporter) SetScTotalShares() {
+	for i := 0; i < exp.NumDevices(); i++ {
+		value := exp.ds.ScTotalShares(i)
+		if value != exp.lastTotalScShares[i] {
+			totalScShares.WithLabelValues(exp.GpuLabel(i)).Add(float64(value - exp.lastTotalScShares[i]))
+			exp.lastTotalScShares[i] = value
+		}
 	}
 }
