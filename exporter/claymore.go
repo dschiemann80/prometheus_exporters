@@ -1,8 +1,6 @@
 package exporter
 
 import (
-	"time"
-
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/dschiemann80/prometheus_exporters/datasource"
 )
