@@ -23,34 +23,40 @@ type Exporter struct {
 	gpus []string
 }
 
-func (exporter *Exporter) Init(collectors []prometheus.Collector, numDevices int) {
+func (exp *Exporter) Init(collectors []prometheus.Collector) {
 	//init prometheus statically
 	for _, c := range collectors {
 		prometheus.MustRegister(c)
 	}
 
-	//init gpu LABELS
-	exporter.gpus = []string{}
-	for i := 0; i < numDevices; i++ {
-		exporter.gpus = append(exporter.gpus, fmt.Sprintf(GPU_FORMAT, i))
-	}
-	
 	flag.Parse()
 }
 
-func (exporter *Exporter) NumDevices() int {
-	return len(exporter.gpus)
+func (exp *Exporter) SetNumDevices(numDevices int) {
+	//init gpu LABELS
+	exp.gpus = []string{}
+	for i := 0; i < numDevices; i++ {
+		exp.gpus = append(exp.gpus, fmt.Sprintf(GPU_FORMAT, i))
+	}
 }
 
-func (exporter *Exporter) GpuLabel(index int) string {
-	return exporter.gpus[index]
+func (exp *Exporter) NumDevices() int {
+	return len(exp.gpus)
 }
 
-func (exporter *Exporter) StartPromHttpAndLog() {
+func (exp *Exporter) GpuLabel(index int) string {
+	if index < len(exp.gpus) {
+		return exp.gpus[index]
+	} else {
+		return ""
+	}
+}
+
+func (exp *Exporter) StartPromHttpAndLog() {
 	http.Handle("/", promhttp.Handler())
 	log.Fatal(http.ListenAndServe(*addr, nil))
 }
 
-func (exporter *Exporter) PollInterval() time.Duration {
+func (exp *Exporter) PollInterval() time.Duration {
 	return *pollInterval
 }

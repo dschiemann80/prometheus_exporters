@@ -54,7 +54,8 @@ func NewNvidiaGpuExporter() *NvidiaGpuExporter {
 	numDevices := newNvidiaGpuExporter.ds.DeviceCount()
 
 	//init "super class"
-	newNvidiaGpuExporter.Exporter.Init([]prometheus.Collector{powerdraw, temperature, fanSpeed, utilization}, numDevices)
+	newNvidiaGpuExporter.Exporter.Init([]prometheus.Collector{powerdraw, temperature, fanSpeed, utilization})
+	newNvidiaGpuExporter.SetNumDevices(numDevices)
 
 	return &newNvidiaGpuExporter
 }

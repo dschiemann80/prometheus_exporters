@@ -10,14 +10,14 @@ import (
 )
 
 var (
-	GPU_COUNT_PATTERN = "(GPU\\d)+"
-	CLAYMORE_URL = "http://localhost:3333"
-	HASHRATE_PATTERN     = "%s:.*GPU%d (\\d+\\.\\d+)"
-	TOTAL_SHARES_PATTERN = "%s -.*Total Shares: (\\d+)(?:\\((\\S+)\\))?"
+	CLAYMORE_URL 			= "http://localhost:3333"
+	GPU_COUNT_PATTERN 		= "(GPU\\d)+"
+	HASHRATE_PATTERN     	= "%s:.*GPU%d (\\d+\\.\\d+)"
+	TOTAL_SHARES_PATTERN 	= "%s -.*Total Shares: (\\d+)(?:\\((\\S+)\\))?"
 )
 
 type ClaymoreDatasource struct {
-
+	lines []string
 }
 
 func NewClaymoreDatasource() *ClaymoreDatasource {
@@ -25,23 +25,27 @@ func NewClaymoreDatasource() *ClaymoreDatasource {
 	return &newClaymoreExporter
 }
 
-func (claymoreDs *ClaymoreDatasource) findLatestClaymorePatternGroups(pattern string) [][]string {
+func (ds *ClaymoreDatasource) Update() {
 	resp, err := http.Get(CLAYMORE_URL)
 	if err != nil {
-		return [][]string{}
+		ds.lines = []string{}
+		return
 	}
 	defer resp.Body.Close()
 
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return [][]string{}
+		ds.lines = []string{}
+		return
 	}
 
-	lines := strings.Split(string(body), "\n")
+	ds.lines = strings.Split(string(body), "\n")
+}
 
+func (ds *ClaymoreDatasource) findLatestClaymorePatternGroups(pattern string) [][]string {
 	r := regexp.MustCompile(pattern)
-	for i := len(lines) - 1; i >= 0; i-- {
-		groups := r.FindAllStringSubmatch(lines[i], -1)
+	for i := len(ds.lines) - 1; i >= 0; i-- {
+		groups := r.FindAllStringSubmatch(ds.lines[i], -1)
 		if len(groups) > 0 {
 			return groups
 		}
@@ -50,30 +54,30 @@ func (claymoreDs *ClaymoreDatasource) findLatestClaymorePatternGroups(pattern st
 	return [][]string{}
 }
 
-func (claymoreDs *ClaymoreDatasource) findLatestClaymorePattern(pattern string) string {
-	return claymoreDs.findLatestClaymorePatternGroups(pattern)[0][1]
+func (ds *ClaymoreDatasource) findLatestClaymorePattern(pattern string) string {
+	return ds.findLatestClaymorePatternGroups(pattern)[0][1]
 }
 
-func (claymoreDs *ClaymoreDatasource) DeviceCount() int {
-	return len(claymoreDs.findLatestClaymorePatternGroups(GPU_COUNT_PATTERN))
+func (ds *ClaymoreDatasource) DeviceCount() int {
+	return len(ds.findLatestClaymorePatternGroups(GPU_COUNT_PATTERN))
 }
 
-func (claymoreDs *ClaymoreDatasource) EthHashrate(index int) float64 {
-	value, _ := strconv.ParseFloat(claymoreDs.findLatestClaymorePattern(fmt.Sprintf(HASHRATE_PATTERN, "ETH", index)), 64)
+func (ds *ClaymoreDatasource) EthHashrate(index int) float64 {
+	value, _ := strconv.ParseFloat(ds.findLatestClaymorePattern(fmt.Sprintf(HASHRATE_PATTERN, "ETH", index)), 64)
 	return value
 }
 
-func (claymoreDs *ClaymoreDatasource) ScHashrate(index int) float64 {
-	value, _ := strconv.ParseFloat(claymoreDs.findLatestClaymorePattern(fmt.Sprintf(HASHRATE_PATTERN, "SC", index)), 64)
+func (ds *ClaymoreDatasource) ScHashrate(index int) float64 {
+	value, _ := strconv.ParseFloat(ds.findLatestClaymorePattern(fmt.Sprintf(HASHRATE_PATTERN, "SC", index)), 64)
 	return value
 }
 
-func (claymoreDs *ClaymoreDatasource) EthTotalShares(index int) uint {
-	value, _ := strconv.ParseUint(strings.Split(claymoreDs.findLatestClaymorePattern(fmt.Sprintf(TOTAL_SHARES_PATTERN, "ETH")), "+")[index], 10, 32)
+func (ds *ClaymoreDatasource) EthTotalShares(index int) uint {
+	value, _ := strconv.ParseUint(strings.Split(ds.findLatestClaymorePattern(fmt.Sprintf(TOTAL_SHARES_PATTERN, "ETH")), "+")[index], 10, 32)
 	return uint(value)
 }
 
-func (claymoreDs *ClaymoreDatasource) ScTotalShares(index int) uint {
-	value, _ := strconv.ParseUint(strings.Split(claymoreDs.findLatestClaymorePattern(fmt.Sprintf(TOTAL_SHARES_PATTERN, "SC")), "+")[index], 10, 32)
+func (ds *ClaymoreDatasource) ScTotalShares(index int) uint {
+	value, _ := strconv.ParseUint(strings.Split(ds.findLatestClaymorePattern(fmt.Sprintf(TOTAL_SHARES_PATTERN, "SC")), "+")[index], 10, 32)
 	return uint(value)
 }
