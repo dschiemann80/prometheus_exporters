@@ -46,7 +46,6 @@ type ClaymoreExporter struct {
 	Exporter
 
 	ds                 *datasource.ClaymoreDatasource
-	lastUpdate			time.Time
 	lastTotalEthShares []uint
 	lastTotalScShares  []uint
 }
@@ -59,19 +58,11 @@ func NewClaymoreExporter() *ClaymoreExporter {
 
 	//init "super class"
 	newClaymoreExporter.init([]prometheus.Collector{ethHashrate, scHashrate, totalEthShares, totalScShares})
-	newClaymoreExporter.update()
 
 	return &newClaymoreExporter
 }
 
-func (exp *ClaymoreExporter) shouldUpdate() bool {
-	deadline := exp.lastUpdate.Add(exp.PollInterval() * time.Second)
-
-	//update only if the last update was pollInterval seconds ago
-	return time.Now().After(deadline)
-}
-
-func (exp *ClaymoreExporter) update() {
+func (exp *ClaymoreExporter) Update() {
 	//save the current number of devices
 	oldNumDevices := exp.ds.DeviceCount()
 
@@ -87,7 +78,7 @@ func (exp *ClaymoreExporter) update() {
 		//update the super class for gpu labels
 		exp.setNumDevices(numDevices)
 
-		//make new last total shares of corredt size
+		//make new last total shares of correct size
 		newLastTotalEthShares := make([]uint, numDevices)
 		newLastTotalScShares := make([]uint, numDevices)
 
@@ -101,28 +92,19 @@ func (exp *ClaymoreExporter) update() {
 	}
 }
 
-func (exp *ClaymoreExporter) maybeUpdate() {
-	if exp.shouldUpdate() {
-		exp.update()
-	}
-}
-
 func (exp *ClaymoreExporter) SetEthHashrates() {
-	exp.maybeUpdate()
 	for i := 0; i < exp.NumDevices(); i++ {
 		ethHashrate.WithLabelValues(exp.GpuLabel(i)).Set(exp.ds.EthHashrate(i))
 	}
 }
 
 func (exp *ClaymoreExporter) SetScHashrates() {
-	exp.maybeUpdate()
 	for i := 0; i < exp.NumDevices(); i++ {
 		scHashrate.WithLabelValues(exp.GpuLabel(i)).Set(exp.ds.ScHashrate(i))
 	}
 }
 
 func (exp *ClaymoreExporter) SetEthTotalShares() {
-	exp.maybeUpdate()
 	for i := 0; i < exp.NumDevices(); i++ {
 		value := exp.ds.EthTotalShares(i)
 		if value != exp.lastTotalEthShares[i] {
@@ -133,7 +115,6 @@ func (exp *ClaymoreExporter) SetEthTotalShares() {
 }
 
 func (exp *ClaymoreExporter) SetScTotalShares() {
-	exp.maybeUpdate()
 	for i := 0; i < exp.NumDevices(); i++ {
 		value := exp.ds.ScTotalShares(i)
 		if value != exp.lastTotalScShares[i] {

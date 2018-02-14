@@ -12,6 +12,7 @@ func main() {
 
 	go func() {
 		for {
+			claymoreExporter.Update()
 			claymoreExporter.SetEthHashrates()
 			claymoreExporter.SetScHashrates()
 			claymoreExporter.SetEthTotalShares()
