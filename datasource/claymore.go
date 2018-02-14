@@ -42,7 +42,7 @@ func (ds *ClaymoreDatasource) Update() {
 	ds.lines = strings.Split(string(body), "\n")
 }
 
-func (ds *ClaymoreDatasource) findLatestClaymorePatternGroups(pattern string) [][]string {
+func (ds *ClaymoreDatasource) findLatestPatternGroups(pattern string) [][]string {
 	r := regexp.MustCompile(pattern)
 	for i := len(ds.lines) - 1; i >= 0; i-- {
 		groups := r.FindAllStringSubmatch(ds.lines[i], -1)
@@ -54,30 +54,30 @@ func (ds *ClaymoreDatasource) findLatestClaymorePatternGroups(pattern string) []
 	return [][]string{}
 }
 
-func (ds *ClaymoreDatasource) findLatestClaymorePattern(pattern string) string {
-	return ds.findLatestClaymorePatternGroups(pattern)[0][1]
+func (ds *ClaymoreDatasource) findLatestPattern(pattern string) string {
+	return ds.findLatestPatternGroups(pattern)[0][1]
 }
 
 func (ds *ClaymoreDatasource) DeviceCount() int {
-	return len(ds.findLatestClaymorePatternGroups(GPU_COUNT_PATTERN))
+	return len(ds.findLatestPatternGroups(GPU_COUNT_PATTERN))
 }
 
 func (ds *ClaymoreDatasource) EthHashrate(index int) float64 {
-	value, _ := strconv.ParseFloat(ds.findLatestClaymorePattern(fmt.Sprintf(HASHRATE_PATTERN, "ETH", index)), 64)
+	value, _ := strconv.ParseFloat(ds.findLatestPattern(fmt.Sprintf(HASHRATE_PATTERN, "ETH", index)), 64)
 	return value
 }
 
 func (ds *ClaymoreDatasource) ScHashrate(index int) float64 {
-	value, _ := strconv.ParseFloat(ds.findLatestClaymorePattern(fmt.Sprintf(HASHRATE_PATTERN, "SC", index)), 64)
+	value, _ := strconv.ParseFloat(ds.findLatestPattern(fmt.Sprintf(HASHRATE_PATTERN, "SC", index)), 64)
 	return value
 }
 
 func (ds *ClaymoreDatasource) EthTotalShares(index int) uint {
-	value, _ := strconv.ParseUint(strings.Split(ds.findLatestClaymorePattern(fmt.Sprintf(TOTAL_SHARES_PATTERN, "ETH")), "+")[index], 10, 32)
+	value, _ := strconv.ParseUint(strings.Split(ds.findLatestPattern(fmt.Sprintf(TOTAL_SHARES_PATTERN, "ETH")), "+")[index], 10, 32)
 	return uint(value)
 }
 
 func (ds *ClaymoreDatasource) ScTotalShares(index int) uint {
-	value, _ := strconv.ParseUint(strings.Split(ds.findLatestClaymorePattern(fmt.Sprintf(TOTAL_SHARES_PATTERN, "SC")), "+")[index], 10, 32)
+	value, _ := strconv.ParseUint(strings.Split(ds.findLatestPattern(fmt.Sprintf(TOTAL_SHARES_PATTERN, "SC")), "+")[index], 10, 32)
 	return uint(value)
 }

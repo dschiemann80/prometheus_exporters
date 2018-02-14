@@ -58,9 +58,8 @@ func NewClaymoreExporter() *ClaymoreExporter {
 	newClaymoreExporter.ds = datasource.NewClaymoreDatasource()
 
 	//init "super class"
-	newClaymoreExporter.Exporter.Init([]prometheus.Collector{ethHashrate, scHashrate, totalEthShares, totalScShares})
+	newClaymoreExporter.init([]prometheus.Collector{ethHashrate, scHashrate, totalEthShares, totalScShares})
 	newClaymoreExporter.update()
-
 
 	return &newClaymoreExporter
 }
@@ -68,6 +67,7 @@ func NewClaymoreExporter() *ClaymoreExporter {
 func (exp *ClaymoreExporter) shouldUpdate() bool {
 	deadline := exp.lastUpdate.Add(exp.PollInterval() * time.Second)
 
+	//update only if the last update was pollInterval seconds ago
 	return time.Now().After(deadline)
 }
 
@@ -85,13 +85,19 @@ func (exp *ClaymoreExporter) update() {
 		//number of devices changed, re-init internal state
 
 		//update the super class for gpu labels
-		exp.Exporter.SetNumDevices(numDevices)
+		exp.setNumDevices(numDevices)
 
-		//init last values
-		for i := 0; i < numDevices; i++ {
-			exp.lastTotalEthShares = append(exp.lastTotalEthShares, 0)
-			exp.lastTotalScShares = append(exp.lastTotalScShares, 0)
-		}
+		//make new last total shares of corredt size
+		newLastTotalEthShares := make([]uint, numDevices)
+		newLastTotalScShares := make([]uint, numDevices)
+
+		///copy over existing values
+		copy(exp.lastTotalEthShares, newLastTotalEthShares)
+		copy(exp.lastTotalScShares, newLastTotalScShares)
+
+		//set the new slices as current values
+		exp.lastTotalEthShares = newLastTotalEthShares
+		exp.lastTotalScShares = newLastTotalScShares
 	}
 }
 

@@ -23,7 +23,7 @@ type Exporter struct {
 	gpus []string
 }
 
-func (exp *Exporter) Init(collectors []prometheus.Collector) {
+func (exp *Exporter) init(collectors []prometheus.Collector) {
 	//init prometheus statically
 	for _, c := range collectors {
 		prometheus.MustRegister(c)
@@ -32,7 +32,7 @@ func (exp *Exporter) Init(collectors []prometheus.Collector) {
 	flag.Parse()
 }
 
-func (exp *Exporter) SetNumDevices(numDevices int) {
+func (exp *Exporter) setNumDevices(numDevices int) {
 	//init gpu LABELS
 	exp.gpus = []string{}
 	for i := 0; i < numDevices; i++ {
