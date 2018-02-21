@@ -32,7 +32,6 @@ func (ds *ClaymoreDatasource) Update() {
 	resp, err := http.Get(CLAYMORE_URL)
 	if err != nil {
 		ds.lines = []string{}
-		fmt.Printf("http.Get err: %v", err)
 		return
 	}
 	defer resp.Body.Close()
@@ -40,7 +39,6 @@ func (ds *ClaymoreDatasource) Update() {
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		ds.lines = []string{}
-		fmt.Printf("ioutilReadAllt err: %v", err)
 		return
 	}
 
@@ -81,13 +79,21 @@ func (ds *ClaymoreDatasource) DcoinHashrate(index int) float64 {
 }
 
 func (ds *ClaymoreDatasource) EthTotalShares(index int) uint {
-	value, _ := strconv.ParseUint(strings.Split(ds.findLatestPattern(fmt.Sprintf(TOTAL_SHARES_PATTERN, ds.coins[0])), "+")[index], 10, 32)
-	return uint(value)
+	split := strings.Split(ds.findLatestPattern(fmt.Sprintf(TOTAL_SHARES_PATTERN, ds.coins[0])), "+")
+	if index < len(split) - 1 {
+		value, _ := strconv.ParseUint(split[index], 10, 32)
+		return uint(value)
+	}
+	return 0
 }
 
 func (ds *ClaymoreDatasource) DcoinTotalShares(index int) uint {
-	value, _ := strconv.ParseUint(strings.Split(ds.findLatestPattern(fmt.Sprintf(TOTAL_SHARES_PATTERN, ds.coins[1])), "+")[index], 10, 32)
-	return uint(value)
+	split := strings.Split(ds.findLatestPattern(fmt.Sprintf(TOTAL_SHARES_PATTERN, ds.coins[1])), "+")
+	if index < len(split) - 1 {
+		value, _ := strconv.ParseUint(split[index], 10, 32)
+		return uint(value)
+	}
+	return 0
 }
 
 func (ds *ClaymoreDatasource) DeviceName(index int) string {
