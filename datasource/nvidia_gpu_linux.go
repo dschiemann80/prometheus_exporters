@@ -75,6 +75,15 @@ func (nvDs *LinuxNvidiaGpuDatasource) Utilization(index int) uint {
 	return value
 }
 
+func (nvDs *LinuxNvidiaGpuDatasource) Name(index int) string {
+	value, err := nvDs.devices[index].Name()
+	if err != nil {
+		fmt.Printf("\tdev[%d].Name() error: %v\n", index, err)
+		value = ""
+	}
+	return value
+}
+
 func NewOsSpecificNvidiaGpuDatasource() *LinuxNvidiaGpuDatasource {
 	newNvGpuDatasource := LinuxNvidiaGpuDatasource{}
 

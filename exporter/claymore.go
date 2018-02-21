@@ -60,7 +60,11 @@ func (exp *ClaymoreExporter) Update() {
 		//number of devices changed, re-init internal state
 
 		//update the super class for gpu labels
-		exp.setNumDevices(numDevices)
+		var deviceNames []string = nil
+		for i := 0; i < numDevices; i++ {
+			deviceNames = append(deviceNames, exp.ds.DeviceName(i))
+		}
+		exp.setGpuLabelValues(deviceNames)
 
 		//make new last total shares of correct size
 		newLastTotalEthShares := make([]uint, numDevices)
@@ -78,8 +82,8 @@ func (exp *ClaymoreExporter) Update() {
 
 func (exp *ClaymoreExporter) SetHashrates() {
 	for i := 0; i < exp.NumDevices(); i++ {
-		hashrate.WithLabelValues(exp.GpuLabel(i), exp.ds.EthLabel()).Set(exp.ds.EthHashrate(i))
-		hashrate.WithLabelValues(exp.GpuLabel(i), exp.ds.DcoinLabel()).Set(exp.ds.DcoinHashrate(i))
+		hashrate.WithLabelValues(exp.GpuLabelValue(i), exp.ds.EthName()).Set(exp.ds.EthHashrate(i))
+		hashrate.WithLabelValues(exp.GpuLabelValue(i), exp.ds.DcoinName()).Set(exp.ds.DcoinHashrate(i))
 	}
 }
 
@@ -87,13 +91,13 @@ func (exp *ClaymoreExporter) SetTotalShares() {
 	for i := 0; i < exp.NumDevices(); i++ {
 		value := exp.ds.EthTotalShares(i)
 		if value != exp.lastTotalEthShares[i] {
-			totalShares.WithLabelValues(exp.GpuLabel(i), exp.ds.EthLabel()).Add(float64(value - exp.lastTotalEthShares[i]))
+			totalShares.WithLabelValues(exp.GpuLabelValue(i), exp.ds.EthName()).Add(float64(value - exp.lastTotalEthShares[i]))
 			exp.lastTotalEthShares[i] = value
 		}
 
 		value = exp.ds.DcoinTotalShares(i)
 		if value != exp.lastTotalDcoinShares[i] {
-			totalShares.WithLabelValues(exp.GpuLabel(i), exp.ds.DcoinLabel()).Add(float64(value - exp.lastTotalDcoinShares[i]))
+			totalShares.WithLabelValues(exp.GpuLabelValue(i), exp.ds.DcoinName()).Add(float64(value - exp.lastTotalDcoinShares[i]))
 			exp.lastTotalDcoinShares[i] = value
 		}
 	}

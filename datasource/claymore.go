@@ -15,6 +15,7 @@ var (
 	HASHRATE_PATTERN     	= "%s:.*GPU%d (\\d+\\.\\d+)"
 	COINS_PATTERN			= "Pool switches: ETH - \\d+, (\\w+) - \\d+"
 	TOTAL_SHARES_PATTERN 	= "%s -.*Total Shares: (\\d+)(?:\\((\\S+)\\))?"
+	NAME_PATTERN			= "GPU #%d: ([A-Za-z0-9 ]+),"
 )
 
 type ClaymoreDatasource struct {
@@ -89,10 +90,14 @@ func (ds *ClaymoreDatasource) DcoinTotalShares(index int) uint {
 	return uint(value)
 }
 
-func (ds *ClaymoreDatasource) EthLabel() string {
+func (ds *ClaymoreDatasource) DeviceName(index int) string {
+	return ds.findLatestPattern(fmt.Sprintf(NAME_PATTERN, index))
+}
+
+func (ds *ClaymoreDatasource) EthName() string {
 	return ds.coins[0]
 }
 
-func (ds *ClaymoreDatasource) DcoinLabel() string {
+func (ds *ClaymoreDatasource) DcoinName() string {
 	return ds.coins[1]
 }
