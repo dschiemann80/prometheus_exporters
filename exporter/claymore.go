@@ -2,50 +2,36 @@ package exporter
 
 import (
 	"github.com/prometheus/client_golang/prometheus"
+
 	"github.com/dschiemann80/prometheus_exporters/datasource"
 )
 
 var (
+	COIN_LABEL = "coin"
 
-	ethHashrate = prometheus.NewGaugeVec(
+	hashrate = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
-			Name:       "claymore_eth_hashrate_mhs",
-			Help:       "ETH hashrate in MH/s",
+			Name:       "claymore_hashrate_mhs",
+			Help:       "Hashrate in MH/s",
 		},
-		LABELS,
+		append(LABELS, COIN_LABEL),
 	)
 
-	scHashrate = prometheus.NewGaugeVec(
-		prometheus.GaugeOpts{
-			Name:       "claymore_sc_hashrate_mhs",
-			Help:       "SC hashrate in MH/s",
-		},
-		LABELS,
-	)
-
-	totalEthShares = prometheus.NewCounterVec(
+	totalShares = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
-			Name:       "claymore_eth_shares_total",
-			Help:       "Total ETH shares",
+			Name:       "claymore_shares_total",
+			Help:       "Total shares",
 		},
-		LABELS,
-	)
-
-	totalScShares = prometheus.NewCounterVec(
-		prometheus.CounterOpts{
-			Name:       "claymore_sc_shares_total",
-			Help:       "Total SC shares",
-		},
-		LABELS,
+		append(LABELS, COIN_LABEL),
 	)
 )
 
 type ClaymoreExporter struct {
 	Exporter
 
-	ds                 *datasource.ClaymoreDatasource
-	lastTotalEthShares []uint
-	lastTotalScShares  []uint
+	ds						*datasource.ClaymoreDatasource
+	lastTotalEthShares 		[]uint
+	lastTotalDcoinShares	[]uint
 }
 
 func NewClaymoreExporter() *ClaymoreExporter {
@@ -55,7 +41,7 @@ func NewClaymoreExporter() *ClaymoreExporter {
 	newClaymoreExporter.ds = datasource.NewClaymoreDatasource()
 
 	//init "super class"
-	newClaymoreExporter.init([]prometheus.Collector{ethHashrate, scHashrate, totalEthShares, totalScShares})
+	newClaymoreExporter.init([]prometheus.Collector{hashrate, totalShares})
 
 	return &newClaymoreExporter
 }
@@ -74,50 +60,45 @@ func (exp *ClaymoreExporter) Update() {
 		//number of devices changed, re-init internal state
 
 		//update the super class for gpu labels
-		exp.setNumDevices(numDevices)
+		var deviceNames []string = nil
+		for i := 0; i < numDevices; i++ {
+			deviceNames = append(deviceNames, exp.ds.DeviceName(i))
+		}
+		exp.setGpuLabelValues(deviceNames)
 
 		//make new last total shares of correct size
 		newLastTotalEthShares := make([]uint, numDevices)
-		newLastTotalScShares := make([]uint, numDevices)
+		newLastTotalDcoinShares := make([]uint, numDevices)
 
 		///copy over existing values
 		copy(exp.lastTotalEthShares, newLastTotalEthShares)
-		copy(exp.lastTotalScShares, newLastTotalScShares)
+		copy(exp.lastTotalDcoinShares, newLastTotalDcoinShares)
 
 		//set the new slices as current values
 		exp.lastTotalEthShares = newLastTotalEthShares
-		exp.lastTotalScShares = newLastTotalScShares
+		exp.lastTotalDcoinShares = newLastTotalDcoinShares
 	}
 }
 
-func (exp *ClaymoreExporter) SetEthHashrates() {
+func (exp *ClaymoreExporter) SetHashrates() {
 	for i := 0; i < exp.NumDevices(); i++ {
-		ethHashrate.WithLabelValues(exp.GpuLabel(i)).Set(exp.ds.EthHashrate(i))
+		hashrate.WithLabelValues(exp.GpuLabelValue(i), exp.ds.EthName()).Set(exp.ds.EthHashrate(i))
+		hashrate.WithLabelValues(exp.GpuLabelValue(i), exp.ds.DcoinName()).Set(exp.ds.DcoinHashrate(i))
 	}
 }
 
-func (exp *ClaymoreExporter) SetScHashrates() {
-	for i := 0; i < exp.NumDevices(); i++ {
-		scHashrate.WithLabelValues(exp.GpuLabel(i)).Set(exp.ds.ScHashrate(i))
-	}
-}
-
-func (exp *ClaymoreExporter) SetEthTotalShares() {
+func (exp *ClaymoreExporter) SetTotalShares() {
 	for i := 0; i < exp.NumDevices(); i++ {
 		value := exp.ds.EthTotalShares(i)
 		if value != exp.lastTotalEthShares[i] {
-			totalEthShares.WithLabelValues(exp.GpuLabel(i)).Add(float64(value - exp.lastTotalEthShares[i]))
+			totalShares.WithLabelValues(exp.GpuLabelValue(i), exp.ds.EthName()).Add(float64(value - exp.lastTotalEthShares[i]))
 			exp.lastTotalEthShares[i] = value
 		}
-	}
-}
 
-func (exp *ClaymoreExporter) SetScTotalShares() {
-	for i := 0; i < exp.NumDevices(); i++ {
-		value := exp.ds.ScTotalShares(i)
-		if value != exp.lastTotalScShares[i] {
-			totalScShares.WithLabelValues(exp.GpuLabel(i)).Add(float64(value - exp.lastTotalScShares[i]))
-			exp.lastTotalScShares[i] = value
+		value = exp.ds.DcoinTotalShares(i)
+		if value != exp.lastTotalDcoinShares[i] {
+			totalShares.WithLabelValues(exp.GpuLabelValue(i), exp.ds.DcoinName()).Add(float64(value - exp.lastTotalDcoinShares[i]))
+			exp.lastTotalDcoinShares[i] = value
 		}
 	}
 }

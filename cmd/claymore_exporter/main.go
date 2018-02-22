@@ -13,10 +13,8 @@ func main() {
 	go func() {
 		for {
 			claymoreExporter.Update()
-			claymoreExporter.SetEthHashrates()
-			claymoreExporter.SetScHashrates()
-			claymoreExporter.SetEthTotalShares()
-			claymoreExporter.SetScTotalShares()
+			claymoreExporter.SetHashrates()
+			claymoreExporter.SetTotalShares()
 			time.Sleep(claymoreExporter.PollInterval() * time.Second)
 		}
 	}()

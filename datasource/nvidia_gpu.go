@@ -7,6 +7,7 @@ type NvidiaGpuDatasource interface {
 	Temperature(index int) uint
 	FanSpeed(index int) uint
 	Utilization(index int) uint
+	Name(index int) string
 }
 
 func NewNvidiaGpuDatasource() NvidiaGpuDatasource {

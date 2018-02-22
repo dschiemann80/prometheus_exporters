@@ -86,6 +86,15 @@ func (nvDs *WindowsNvidiaGpuDatasource) Utilization(index int) uint {
 	return uint(util.GPU)
 }
 
+func (nvDs *WindowsNvidiaGpuDatasource) Name(index int) string {
+	value, err := nvmlAPI.DeviceGetName(nvDs.devices[index])
+	if err != nil {
+		fmt.Printf("nvmlAPI.Name() error: %v\n", err)
+		value = ""
+	}
+	return value
+}
+
 func NewOsSpecificNvidiaGpuDatasource() *WindowsNvidiaGpuDatasource {
 	newNvGpuDatasource := WindowsNvidiaGpuDatasource{}
 

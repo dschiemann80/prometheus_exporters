@@ -13,11 +13,14 @@ var (
 	CLAYMORE_URL 			= "http://localhost:3333"
 	GPU_COUNT_PATTERN 		= "(GPU\\d)+"
 	HASHRATE_PATTERN     	= "%s:.*GPU%d (\\d+\\.\\d+)"
+	COINS_PATTERN			= "Pool switches: ETH - \\d+, (\\w+) - \\d+"
 	TOTAL_SHARES_PATTERN 	= "%s -.*Total Shares: (\\d+)(?:\\((\\S+)\\))?"
+	NAME_PATTERN			= "GPU #%d: ([A-Za-z0-9 ]+),"
 )
 
 type ClaymoreDatasource struct {
 	lines []string
+	coins [2]string
 }
 
 func NewClaymoreDatasource() *ClaymoreDatasource {
@@ -40,6 +43,9 @@ func (ds *ClaymoreDatasource) Update() {
 	}
 
 	ds.lines = strings.Split(string(body), "\n")
+
+	ds.coins[0] = "ETH"
+	ds.coins[1] = ds.findLatestPattern(COINS_PATTERN)
 }
 
 func (ds *ClaymoreDatasource) findLatestPatternGroups(pattern string) [][]string {
@@ -63,21 +69,41 @@ func (ds *ClaymoreDatasource) DeviceCount() int {
 }
 
 func (ds *ClaymoreDatasource) EthHashrate(index int) float64 {
-	value, _ := strconv.ParseFloat(ds.findLatestPattern(fmt.Sprintf(HASHRATE_PATTERN, "ETH", index)), 64)
+	value, _ := strconv.ParseFloat(ds.findLatestPattern(fmt.Sprintf(HASHRATE_PATTERN, ds.coins[0], index)), 64)
 	return value
 }
 
-func (ds *ClaymoreDatasource) ScHashrate(index int) float64 {
-	value, _ := strconv.ParseFloat(ds.findLatestPattern(fmt.Sprintf(HASHRATE_PATTERN, "SC", index)), 64)
+func (ds *ClaymoreDatasource) DcoinHashrate(index int) float64 {
+	value, _ := strconv.ParseFloat(ds.findLatestPattern(fmt.Sprintf(HASHRATE_PATTERN, ds.coins[1], index)), 64)
 	return value
 }
 
 func (ds *ClaymoreDatasource) EthTotalShares(index int) uint {
-	value, _ := strconv.ParseUint(strings.Split(ds.findLatestPattern(fmt.Sprintf(TOTAL_SHARES_PATTERN, "ETH")), "+")[index], 10, 32)
-	return uint(value)
+	split := strings.Split(ds.findLatestPattern(fmt.Sprintf(TOTAL_SHARES_PATTERN, ds.coins[0])), "+")
+	if index < len(split) - 1 {
+		value, _ := strconv.ParseUint(split[index], 10, 32)
+		return uint(value)
+	}
+	return 0
 }
 
-func (ds *ClaymoreDatasource) ScTotalShares(index int) uint {
-	value, _ := strconv.ParseUint(strings.Split(ds.findLatestPattern(fmt.Sprintf(TOTAL_SHARES_PATTERN, "SC")), "+")[index], 10, 32)
-	return uint(value)
+func (ds *ClaymoreDatasource) DcoinTotalShares(index int) uint {
+	split := strings.Split(ds.findLatestPattern(fmt.Sprintf(TOTAL_SHARES_PATTERN, ds.coins[1])), "+")
+	if index < len(split) - 1 {
+		value, _ := strconv.ParseUint(split[index], 10, 32)
+		return uint(value)
+	}
+	return 0
+}
+
+func (ds *ClaymoreDatasource) DeviceName(index int) string {
+	return ds.findLatestPattern(fmt.Sprintf(NAME_PATTERN, index))
+}
+
+func (ds *ClaymoreDatasource) EthName() string {
+	return ds.coins[0]
+}
+
+func (ds *ClaymoreDatasource) DcoinName() string {
+	return ds.coins[1]
 }
