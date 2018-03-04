@@ -85,10 +85,10 @@ func (nvDs *LinuxNvidiaGpuDatasource) Name(index int) string {
 }
 
 func NewOsSpecificNvidiaGpuDatasource() *LinuxNvidiaGpuDatasource {
-	newNvGpuDatasource := LinuxNvidiaGpuDatasource{}
+	ds := LinuxNvidiaGpuDatasource{}
 
 	if !initialized {
-		newNvGpuDatasource.Init()
+		ds.Init()
 	}
 
 	if initialized {
@@ -106,9 +106,9 @@ func NewOsSpecificNvidiaGpuDatasource() *LinuxNvidiaGpuDatasource {
 				fmt.Printf("\tDeviceHandleByIndex() error: %v\n", err)
 				return nil
 			}
-			newNvGpuDatasource.devices = append(newNvGpuDatasource.devices, dev)
+			ds.devices = append(ds.devices, dev)
 		}
-		return &newNvGpuDatasource
+		return &ds
 	}
 	return nil
 }

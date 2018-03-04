@@ -12,7 +12,7 @@ var (
 			Name:       "gpu_powerdraw_watt",
 			Help:       "Powerdraw in Watt",
 		},
-		LABELS,
+		labelNames,
 	)
 
 	temperature = prometheus.NewGaugeVec(
@@ -20,7 +20,7 @@ var (
 			Name:       "gpu_temperature_celsius",
 			Help:       "Temperature in degrees Celcius",
 		},
-		LABELS,
+		labelNames,
 	)
 
 	fanSpeed = prometheus.NewGaugeVec(
@@ -28,7 +28,7 @@ var (
 			Name:       "gpu_fan_speed_percent",
 			Help:       "Fan speed in percent",
 		},
-		LABELS,
+		labelNames,
 	)
 
 	utilization = prometheus.NewGaugeVec(
@@ -36,7 +36,7 @@ var (
 			Name:       "gpu_utilization_percent",
 			Help:       "Utilization in percent",
 		},
-		LABELS,
+		labelNames,
 	)
 )
 
@@ -53,14 +53,16 @@ func NewNvidiaGpuExporter() *NvidiaGpuExporter {
 	exp.ds = datasource.NewNvidiaGpuDatasource()
 	numDevices := exp.ds.DeviceCount()
 
+	exp.parseArgs()
+
 	//init "super class"
-	exp.init([]prometheus.Collector{powerdraw, temperature, fanSpeed, utilization})
+	exp.registerCollectors([]prometheus.Collector{powerdraw, temperature, fanSpeed, utilization})
 
 	var deviceNames []string = nil
 	for i := 0; i < numDevices; i++ {
 		deviceNames = append(deviceNames, exp.ds.Name(i))
 	}
-	exp.setGpuLabelValues(deviceNames)
+	exp.setDevices(deviceNames)
 
 	return &exp
 }
