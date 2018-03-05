@@ -96,10 +96,10 @@ func (nvDs *WindowsNvidiaGpuDatasource) Name(index int) string {
 }
 
 func NewOsSpecificNvidiaGpuDatasource() *WindowsNvidiaGpuDatasource {
-	newNvGpuDatasource := WindowsNvidiaGpuDatasource{}
+	ds := WindowsNvidiaGpuDatasource{}
 
 	if nvmlAPI == nil {
-		newNvGpuDatasource.Init()
+		ds.Init()
 	}
 
 	if nvmlAPI != nil {
@@ -120,9 +120,9 @@ func NewOsSpecificNvidiaGpuDatasource() *WindowsNvidiaGpuDatasource {
 				fmt.Printf("\tDeviceHandleByIndex() error: %v\n", err)
 				return nil
 			}
-			newNvGpuDatasource.devices = append(newNvGpuDatasource.devices, device)
+			ds.devices = append(ds.devices, device)
 		}
-		return &newNvGpuDatasource
+		return &ds
 	}
 	return nil
 }
